@@ -55,22 +55,31 @@ def extract_reviews(driver):
                 date = None
 
             try:
-                author = review.find_element(By.CSS_SELECTOR, "span.typography_heading-xxs__QKBS8").text
+                author_block = review.find_element(By.CSS_SELECTOR, "a[data-consumer-profile-link='true']")
+                author = author_block.find_element(By.CSS_SELECTOR, "span[data-consumer-name-typography='true']").text
+
+                extra_details = author_block.find_element(By.CLASS_NAME, "styles_consumerExtraDetails__NY6RP")
+                country = extra_details.find_element(By.CSS_SELECTOR, "span[data-consumer-country-typography='true']").text
+                reviews_count_text = extra_details.find_element(By.CSS_SELECTOR, "span[data-consumer-reviews-count-typography='true']").text
+                reviews_count = int(reviews_count_text.split()[0])  # "1 review" → 1
             except:
-                author = None 
+                author = country = reviews_count = None
 
             all_reviews.append({
                 "Title": title,
                 "Content": content,
                 "Rating": rating,
                 "Date": date,
-                "Author": author
+                "Author": author,
+                "Country": country,
+                "ReviewsCount": reviews_count
             })
 
         page += 1
         time.sleep(2)
 
     return all_reviews
+
 
 def main():
     driver = setup_driver()

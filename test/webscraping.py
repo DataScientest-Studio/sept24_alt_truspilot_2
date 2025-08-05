@@ -1,11 +1,12 @@
 import sys
 import os
 
-# Vérification de l'environnement virtuel
-if sys.prefix == sys.base_prefix:
-    print("\033[91m[ERREUR] Veuillez activer l'environnement virtuel avant de lancer ce script :\033[0m")
-    print("  source venv/bin/activate && python notebooks/webscraping.py")
-    sys.exit(1)
+# Vérification de l'environnement virtuel (optionnel)
+# Décommentez les lignes suivantes si vous voulez forcer l'utilisation de l'environnement virtuel
+# if sys.prefix == sys.base_prefix:
+#     print("\033[91m[ERREUR] Veuillez activer l'environnement virtuel avant de lancer ce script :\033[0m")
+#     print("  source venv/bin/activate && python test/webscraping.py")
+#     sys.exit(1)
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -47,7 +48,35 @@ def extract_reviews(driver):
                 title = None
 
             try:
-                content = review.find_element(By.CSS_SELECTOR, "p").text
+                # Essayer plusieurs sélecteurs pour capturer le contenu complet
+                content_selectors = [
+                    "p[data-service-review-card-typography='true']",
+                    "p[data-service-review-card-typography]",
+                    "p[class*='review']",
+                    "p"
+                ]
+                
+                content = None
+                for selector in content_selectors:
+                    try:
+                        content_element = review.find_element(By.CSS_SELECTOR, selector)
+                        # Essayer textContent d'abord pour récupérer le texte original
+                        content = content_element.get_attribute('textContent')
+                        if not content:
+                            content = content_element.text
+                        if content:
+                            break
+                    except:
+                        continue
+                
+                # Nettoyer le contenu si trouvé
+                if content:
+                    content = content.strip()
+                    # Supprimer les "See more" et autres textes de troncature
+                    if "... See more" in content:
+                        content = content.replace("... See more", "")
+                    if "See more" in content:
+                        content = content.replace("See more", "")
             except:
                 content = None
 
@@ -108,7 +137,7 @@ def main():
     print(f"\nTotal d'avis récupérés : {len(df)}\n")
     print(df.head())
 
-    df.to_csv("trustpilot_ringconn_v3.csv", index=False, quoting=csv.QUOTE_ALL)
+    df.to_csv("trustpilot_ouraring.csv", index=False, quoting=csv.QUOTE_ALL)
     print("\nExport CSV terminé.")
 
 if __name__ == "__main__":

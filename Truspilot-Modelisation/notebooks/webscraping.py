@@ -43,10 +43,12 @@ def extract_reviews(driver):
                 content = None
 
             try:
-                rating_img = review.find_element(By.CSS_SELECTOR, 'div.star-rating_starRating__sdbkn img')
-                alt_text = rating_img.get_attribute('alt')  # Ex: "Rated 4 out of 5 stars"
-                rating = int(alt_text.split(" ")[1])
-            except:
+                # ✅ Fix rating : récupère le rating à partir de l'attribut alt de l'image
+                rating_img = review.find_element(By.CSS_SELECTOR, 'img[alt^="Rated"]')
+                alt_text = rating_img.get_attribute("alt")  # e.g. "Rated 4 out of 5 stars"
+                rating = int(alt_text.split()[1])
+            except Exception as e:
+                print(f"[⚠️] Erreur rating : {e}")
                 rating = None
 
             try:
@@ -80,7 +82,6 @@ def extract_reviews(driver):
 
     return all_reviews
 
-
 def main():
     driver = setup_driver()
     reviews = extract_reviews(driver)
@@ -90,8 +91,8 @@ def main():
     print(f"\nTotal d'avis récupérés : {len(df)}\n")
     print(df.head())
 
-    df.to_csv("trustpilot_ringconn_v3.csv", index=False, quoting=csv.QUOTE_ALL)
-    print("\nExport CSV terminé.")
+    df.to_csv("trustpilot_ringconn_scraping.csv", index=False, quoting=csv.QUOTE_ALL)
+    print("\n✅ Export CSV terminé : trustpilot_ringconn_scraping.csv")
 
 if __name__ == "__main__":
     main()

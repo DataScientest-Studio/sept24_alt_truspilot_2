@@ -52,7 +52,6 @@ if __name__ == "__main__":
     if args.input_csv:
         in_path = Path(args.input_csv)
         out_path = Path(args.output_csv)
-        # si chemins relatifs, ils seront relatifs au répertoire courant
         if not in_path.is_absolute():
             in_path = Path.cwd() / in_path
         if not out_path.is_absolute():

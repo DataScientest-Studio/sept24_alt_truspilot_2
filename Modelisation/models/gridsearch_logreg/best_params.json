@@ -1,0 +1,11 @@
+{
+  "clf__C": 0.5,
+  "clf__class_weight": null,
+  "clf__penalty": "l2",
+  "tfidf__max_features": 20000,
+  "tfidf__min_df": 1,
+  "tfidf__ngram_range": [
+    1,
+    3
+  ]
+}

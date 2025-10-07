@@ -26,18 +26,45 @@ def get_sentiment(texts):
 # -----------------------------------------------------------
 # Pipeline complet : TF-IDF + sentiment
 # -----------------------------------------------------------
-def build_pipeline():
-    # Partie texte → TF-IDF
-    tfidf = ("tfidf", TfidfVectorizer(max_features=10000, ngram_range=(1, 2)))
+def build_pipeline(use_char_ngrams: bool = True):
+    """
+    Pipeline = [ (TF-IDF mots [+ char n-grams]) + sentiment ] -> Oversampling -> LogReg
 
-    # Partie sentiment → transforme X (texte brut) en score de sentiment
+    Tweaks TF-IDF :
+      - sublinear_tf=True      : log-TF, réduit l'effet des mots très répétés
+      - max_df=0.9             : coupe les mots trop fréquents (bruit)
+      - min_df=2               : enlève les termes ultra-rares (bruit)
+      - ngram_range=(1,2)      : unigrams + bigrams (expressions)
+    Option :
+      - char n-grams (3,5)     : robuste aux fautes/accents/variantes (recommandé)
+    """
+    # TF-IDF sur mots
+    tfidf_words = ("tfidf_words", TfidfVectorizer(
+        max_features=20000,
+        ngram_range=(1, 2),
+        sublinear_tf=True,
+        min_df=2,
+        max_df=0.9
+    ))
+
+    # (Optionnel) TF-IDF sur caractères
+    transformers = [tfidf_words]
+
+    if use_char_ngrams:
+        tfidf_chars = ("tfidf_chars", TfidfVectorizer(
+            analyzer="char",
+            ngram_range=(3, 5),   # tri- à penta-grammes de caractères
+            min_df=3,
+            max_features=20000
+        ))
+        transformers.append(tfidf_chars)
+
+    # Feature sentiment (renvoie un array (n_samples, 1))
     sentiment = ("sentiment", FunctionTransformer(get_sentiment, validate=False))
+    transformers.append(sentiment)
 
-    # Fusion TF-IDF + Sentiment
-    features = FeatureUnion([
-        tfidf,
-        sentiment
-    ])
+    # Fusion : TF-IDF (mots [+ chars]) + sentiment
+    features = FeatureUnion(transformer_list=transformers)
 
     # Oversampling + modèle
     pipe = ImbPipeline([
@@ -47,6 +74,7 @@ def build_pipeline():
     ])
 
     return pipe
+
 
 
 # -----------------------------------------------------------

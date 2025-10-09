@@ -1,0 +1,18 @@
+{
+  "config": {
+    "use_polarity": false,
+    "use_subjectivity": false,
+    "num_weight": 0.3,
+    "use_ros": true,
+    "C": 1.0
+  },
+  "threshold_0.5": {
+    "f1": 0.9584415584415584,
+    "roc_auc": 0.9787154056235556
+  },
+  "threshold_opt": {
+    "thr": 0.41506049215658114,
+    "f1": 0.9606598984771574,
+    "roc_auc": 0.9787154056235556
+  }
+}

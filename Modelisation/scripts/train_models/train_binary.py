@@ -177,7 +177,7 @@ if __name__ == "__main__":
     p.add_argument("--test_csv",  type=str, default="data/processed/test.csv",
                    help="Chemin vers data/processed/test.csv (texte + rating 1..5).")
 
-    # Si tu veux ignorer le split existant et refaire un split 80/20 :
+    # args pour ignorer le split existant et refaire un split 80/20 :
     p.add_argument("--input_csv", type=str, default="",
                    help="CSV complet (texte+rating) à splitter si --train_csv/--test_csv vides.")
     p.add_argument("--text_col", type=str, default="CleanText")

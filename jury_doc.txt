@@ -1,0 +1,115 @@
+============================
+DOCUMENT : À DIRE AU JURY
+Projet Trustpilot - Pierre Poulouin
+============================
+
+🎬 1. Phase de preprocessing (nettoyage et préparation)
+------------------------------------------------------
+“Je suis parti du fichier `trustpilot_dataset_final_cleaned.csv`, qui rassemble les avis des différentes marques qu’on a scrappées.
+À cette étape, l’objectif était de nettoyer le texte pour obtenir une variable exploitable par un modèle de Machine Learning.
+
+J’ai fusionné le `Title` et le `Content` quand les deux existaient, supprimé les caractères spéciaux, passé les textes en minuscules et enlevé les mots inutiles (stopwords).
+
+Ensuite, j’ai créé une colonne `CleanText`, qui devient la base textuelle de tout le projet.
+
+Ce choix est important, car il permet d’avoir une structure homogène et réutilisable pour tous les modèles, que ce soit en multiclass ou en binaire.”
+
+------------------------------------------------------
+
+📊 2. Découpage du dataset (split train/test)
+------------------------------------------------------
+“Une fois le dataset nettoyé, j’ai utilisé le script `split_train_test.py` pour créer un split stratifié 80/20.
+
+La stratification permet de préserver la proportion de notes 1 à 5 entre le train et le test.
+C’est essentiel pour avoir une évaluation honnête du modèle.
+
+Ce découpage produit les fichiers `data/processed/train.csv` et `data/processed/test.csv`, qui servent de base commune à toutes les expériences.
+
+J’ai choisi de garder ce split unique comme référence pour éviter de biaiser les comparaisons entre les différents modèles.”
+
+------------------------------------------------------
+
+🤖 3. Modélisation multiclass (1 à 5 étoiles)
+------------------------------------------------------
+“Dans un premier temps, j’ai entraîné un modèle de classification multiclasses sur 5 classes (notes 1 à 5).
+
+L’objectif était de prédire la note exacte d’un avis client.
+
+Le modèle utilisé était une régression logistique avec représentation TF-IDF, un choix simple, robuste et interprétable.
+
+Les résultats ont montré que le modèle reconnaissait bien les notes extrêmes (1 et 5), mais avait plus de mal à distinguer les notes proches, notamment 3, 4 et 5.
+
+En regardant la matrice de confusion normalisée, on remarque que la note 3 est la plus difficile à prédire, souvent confondue avec 4 ou 5.
+
+C’est un comportement classique : le langage des avis moyens est souvent très proche de celui des avis positifs.”
+
+------------------------------------------------------
+
+🔄 4. Justification du passage en binaire
+------------------------------------------------------
+“Suite à cette analyse, j’ai fait le choix de transformer le problème en classification binaire, ce qui est une pratique courante en NLP quand les classes sont trop proches.
+
+Concrètement, j’ai regroupé les notes 1 et 2 dans la classe ‘mauvais’, et les notes 3, 4 et 5 dans la classe ‘bon’.
+
+L’objectif est de répondre à une question plus simple et plus métier :
+‘Est-ce que l’avis est globalement positif ou négatif ?’
+
+J’ai utilisé le script `make_reports_from_predictions.py` pour démontrer que cette transformation était pertinente.
+
+Les courbes ROC et les matrices binaires ont confirmé que le modèle se comportait beaucoup mieux : les classes sont bien séparées et la performance augmente fortement.
+
+Cette étape sert donc de preuve par les chiffres avant de réentraîner un vrai modèle binaire.”
+
+------------------------------------------------------
+
+⚙️ 5. Réentraînement du modèle binaire (`train_binary.py`)
+------------------------------------------------------
+“Une fois la pertinence prouvée, j’ai réentraîné un modèle spécifiquement binaire avec le script `train_binary.py`.
+
+Ce modèle utilise le même pipeline TF-IDF + Logistic Regression, mais cette fois, il apprend directement sur la cible binaire (0 ou 1).
+
+J’ai aussi intégré un RandomOverSampler uniquement sur le jeu d’entraînement pour corriger le léger déséquilibre entre les classes.
+
+Le modèle est ensuite évalué sur le jeu de test, jamais vu pendant l’entraînement.”
+
+------------------------------------------------------
+
+📈 6. Résultats et interprétation
+------------------------------------------------------
+“Le modèle binaire atteint un F1-score de 0.96, avec un AUC de 0.98 et une précision globale de 95 %.
+
+Les matrices de confusion montrent très peu d’erreurs, et les deux seuils (0.5 et optimal à 0.51) donnent presque les mêmes résultats, ce qui montre que le modèle est stable et bien calibré.
+
+La courbe Precision–Recall est presque parfaite (AP = 0.99), preuve que le modèle garde une grande fiabilité même sur les classes minoritaires.
+
+Ce modèle est donc à la fois performant, explicable et pertinent pour un usage métier.”
+
+------------------------------------------------------
+
+🧠 7. Stratégie d’amélioration (features et bonnes pratiques)
+------------------------------------------------------
+“En tant que Data Scientist, j’ai choisi de garder ce modèle comme baseline officielle, car il est déjà excellent et simple à maintenir.
+
+Ajouter des features maintenant risquerait de complexifier inutilement le pipeline pour un gain marginal.
+
+En revanche, j’ai prévu un second script `train_binary_features.py` pour tester à part l’ajout de quelques features interprétables : longueur du texte, nombre d’exclamations, ratio de majuscules, subjectivité, etc.
+
+Si ces features apportent un vrai gain, je les intégrerai dans une version 2.
+Sinon, je privilégierai la simplicité et la stabilité du modèle actuel.”
+
+------------------------------------------------------
+
+🧾 8. Conclusion générale 
+------------------------------------------------------
+Le projet a suivi une approche progressive et rigoureuse :
+- Nettoyage et normalisation du texte,
+- Construction d’un pipeline TF-IDF + Logistic Regression,
+- Évaluation multiclass puis binaire,
+- Et validation d’un modèle robuste, simple et performant.
+
+Ce travail prouve qu’on peut atteindre d’excellents résultats avec un modèle classique bien préparé, sans recourir à des architectures complexes.
+
+La prochaine étape, si le temps le permet, sera d’ajouter des features explicatives pour renforcer encore la performance, ou de tester un modèle plus moderne type SVM ou BERT.
+
+Mais la version actuelle répond déjà très bien à la question initiale du projet :
+‘Un client est-il globalement satisfait ou non ?’

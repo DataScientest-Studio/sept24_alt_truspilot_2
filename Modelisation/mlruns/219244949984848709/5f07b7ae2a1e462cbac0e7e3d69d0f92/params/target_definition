@@ -1,0 +1,1 @@
+1 if Rating >= 4 else 0

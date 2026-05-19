@@ -1,3 +1,8 @@
+fastapi
+uvicorn
 pandas
-matplotlib
-wordcloud
+scikit-learn
+joblib
+mlflow
+pytest
+httpx

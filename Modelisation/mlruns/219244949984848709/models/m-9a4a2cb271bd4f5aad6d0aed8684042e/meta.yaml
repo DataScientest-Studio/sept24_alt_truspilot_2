@@ -1,0 +1,10 @@
+artifact_location: file:///C:/Users/T_TNe/OneDrive/Bureau/DataScientest/Projet%20Trustpilot/sept24_alt_truspilot_2/Modelisation/mlruns/219244949984848709/models/m-9a4a2cb271bd4f5aad6d0aed8684042e/artifacts
+creation_timestamp: 1779193248244
+experiment_id: '219244949984848709'
+last_updated_timestamp: 1779193250756
+model_id: m-9a4a2cb271bd4f5aad6d0aed8684042e
+model_type: null
+name: model
+source_run_id: dea7bb0f79cf4133bc5cf7e8df79316d
+status: 2
+status_message: null

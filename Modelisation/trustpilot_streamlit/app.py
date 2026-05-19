@@ -39,11 +39,11 @@ st.markdown(
 # --------------------------------------------------
 # ONGLETS
 # --------------------------------------------------
-tab_context, tab_demarche, tab_comparaisons, tab_explo, tab_model, tab_limites, tab_demo = st.tabs([
+tab_context, tab_demarche, tab_explo, tab_comparaisons, tab_model, tab_limites, tab_demo = st.tabs([
     "🏠 Contexte & objectif",
     "🧭 Démarche méthodologique",
-    "🧪 Comparaisons & arbitrages",
     "📊 Exploration des données",
+    "🧪 Comparaisons & arbitrages",   
     "🤖 Modélisation finale",
     "⚠️ Limites & perspectives",
     "🔮 Démo – Prédiction"
@@ -104,47 +104,8 @@ with tab_demarche:
     Le projet a volontairement privilégié un **pipeline simple, interprétable
     et reproductible**, plutôt qu’une complexité algorithmique excessive.
     """)
-# ==================================================
-# 🧪 COMPARAISONS & ARBITRAGES
-# ==================================================
-with tab_comparaisons:
-    st.header("🧪 Comparaisons et arbitrages méthodologiques")
 
-    st.markdown("""
-    Le projet a suivi une logique itérative, avec plusieurs formulations
-    et choix testés avant d’aboutir au modèle final.
-    """)
-
-    st.table({
-        "Approche testée": [
-            "Classification multiclasse (1 à 5)",
-            "Classification binaire (1–2 / 3–5)",
-            "Binaire + feature sentiment"
-        ],
-        "Motivation": [
-            "Respect de la structure brute des données",
-            "Alignement métier et réduction de l’ambiguïté",
-            "Tester un enrichissement sémantique"
-        ],
-        "Constat": [
-            "Forte confusion entre classes intermédiaires",
-            "Modèle plus stable et interprétable",
-            "Gain marginal, pipeline plus complexe"
-        ],
-        "Décision": [
-            "Abandonnée",
-            "Retenue",
-            "Non retenue"
-        ]
-    })
-
-    st.markdown("""
-    Ces comparaisons montrent que l’augmentation de la complexité
-    n’apporte pas nécessairement de gain significatif,
-    et que le modèle final est un compromis assumé.
-    """)
-
-# ==================================================
+    # ==================================================
 # 📈 EXPLORATION
 # ==================================================
 with tab_explo:
@@ -209,6 +170,87 @@ with tab_explo:
         st.caption(
             "Les avis positifs utilisent un lexique plus répétitif et homogène."
         )
+# ==================================================
+# 🧪 COMPARAISONS & ARBITRAGES
+# ==================================================
+with tab_comparaisons:
+    st.header("🧪 Comparaisons et arbitrages méthodologiques")
+
+    st.markdown("""
+    Le projet a été mené de manière **itérative**, avec plusieurs formulations du problème
+    testées successivement.  
+    Chaque choix de modélisation a été **guidé par l’analyse des erreurs**, la stabilité
+    des résultats et leur **cohérence métier**.
+    """)
+
+    st.subheader("🔍 Approches testées")
+
+    st.table({
+        "Approche testée": [
+            "Classification multi-classe (1 à 5 étoiles)",
+            "Classification binaire (avis négatif / positif)",
+            "Classification binaire + features de sentiment"
+        ],
+        "Objectif initial": [
+            "Prédire précisément la note attribuée par l’utilisateur",
+            "Simplifier la tâche et réduire l’ambiguïté sémantique",
+            "Tester un enrichissement sémantique du texte"
+        ],
+        "Constats principaux": [
+            "Confusions importantes entre classes intermédiaires (2–3–4)",
+            "Séparation plus nette entre avis satisfaits et insatisfaits",
+            "Amélioration marginale au prix d’un pipeline plus complexe"
+        ],
+        "Décision": [
+            "Approche abandonnée",
+            "Approche retenue",
+            "Non retenue"
+        ]
+    })
+
+    st.markdown("""
+    Cette comparaison met en évidence un point clé du projet :  
+    **augmenter la complexité du modèle n’implique pas nécessairement de meilleures performances**.
+    Le choix final repose sur un compromis assumé entre **performance**, **robustesse**
+    et **interprétabilité**.
+    """)
+
+    st.subheader("📊 Justification du pivot multi-classe → binaire")
+
+    st.markdown("""
+    Les matrices de confusion ci-dessous illustrent visuellement ce choix.
+    Elles montrent pourquoi la classification binaire s’est révélée plus adaptée
+    au contexte du projet.
+    """)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.caption("Matrice de confusion — classification multi-classe (normalisée)")
+        st.image(
+            "figures/confusion_matrix_multiclass_normalized.png",
+            use_container_width=True
+        )
+        st.markdown("""
+        👉 Les classes intermédiaires (2, 3 et 4 étoiles) sont fortement confondues.  
+        Cela s’explique par la proximité sémantique des avis mitigés, difficiles à
+        distinguer uniquement par le texte.
+        """)
+
+    with col2:
+        st.caption("Matrice de confusion — classification binaire")
+        st.image(
+            "figures/confusion_matrix_binary_opt.png",
+            use_container_width=True
+        )
+        st.markdown("""
+        👉 La séparation entre avis négatifs et positifs est beaucoup plus nette.  
+        Cette formulation permet d’obtenir un modèle **plus stable**, **plus lisible**
+        et **directement exploitable** d’un point de vue métier.
+        """)
+
+
+
 
 # ==================================================
 # 🧠 MODÉLISATION
@@ -247,11 +289,15 @@ with tab_model:
             "La courbe ROC indique une forte capacité de discrimination du modèle."
         )
 
-    st.image(FIG_DIR / "pr.png", use_container_width=True)
-    st.caption(
-        "La courbe Precision-Recall confirme de bonnes performances malgré le déséquilibre "
-        "des classes, justifiant l’usage du F1-score."
-    )
+    col_pr_left, col_pr_center, col_pr_right = st.columns([1, 2, 1])
+
+    with col_pr_center:
+        st.image(FIG_DIR / "pr.png", use_container_width=True)
+        st.caption(
+            "La courbe Precision-Recall confirme de bonnes performances malgré le déséquilibre "
+            "des classes, justifiant l’usage du F1-score."
+        )
+
 # ==================================================
 # ⚠️ LIMITES & PISTES D’AMÉLIORATION
 # ==================================================

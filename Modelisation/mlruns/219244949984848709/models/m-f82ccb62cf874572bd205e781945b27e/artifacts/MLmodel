@@ -1,0 +1,22 @@
+artifact_path: file:///C:/Users/T_TNe/OneDrive/Bureau/DataScientest/Projet%20Trustpilot/sept24_alt_truspilot_2/Modelisation/mlruns/219244949984848709/models/m-f82ccb62cf874572bd205e781945b27e/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.13.9
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.2
+mlflow_version: 3.5.1
+model_id: m-f82ccb62cf874572bd205e781945b27e
+model_size_bytes: 237510
+model_uuid: m-f82ccb62cf874572bd205e781945b27e
+prompts: null
+run_id: 14604b4631fd4171b1901d97fdd16ef6
+utc_time_created: '2026-05-19 12:43:06.596714'

@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/T_TNe/OneDrive/Bureau/DataScientest/Projet%20Trustpilot/sept24_alt_truspilot_2/Modelisation/mlruns/219244949984848709/ac19ab24284e44e3a7dcf0f77eec2831/artifacts
+end_time: 1779193819758
+entry_point_name: ''
+experiment_id: '219244949984848709'
+lifecycle_stage: active
+run_id: ac19ab24284e44e3a7dcf0f77eec2831
+run_name: tfidf_logistic_regression_training
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779193816773
+status: 3
+tags: []
+user_id: T_TNe

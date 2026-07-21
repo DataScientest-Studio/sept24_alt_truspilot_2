@@ -1,6 +1,8 @@
 from pathlib import Path
 import hashlib
 import sqlite3
+import os
+import subprocess
 
 import joblib
 import matplotlib.pyplot as plt
@@ -33,6 +35,12 @@ REGISTERED_MODEL_NAME = "trustpilot_sentiment_model"
 BEST_ALIAS = "best"
 METRIC_TO_COMPARE = "f1_macro"
 
+MLFLOW_TRACKING_URI = os.getenv(
+    "MLFLOW_TRACKING_URI",
+    "http://127.0.0.1:5001"
+)
+ARTIFACTS_DIR = Path("artifacts")
+
 
 def load_data() -> pd.DataFrame:
     if not Path(DB_PATH).exists():
@@ -60,6 +68,27 @@ def compute_dataset_hash(df: pd.DataFrame) -> str:
     df_hash = pd.util.hash_pandas_object(df, index=True).values
     return hashlib.md5(df_hash).hexdigest()
 
+def get_git_commit_hash() -> str:
+    """
+    Récupère le hash du commit Git associé au run.
+
+    Priorité :
+    1. Variable d'environnement GIT_COMMIT_HASH, utile dans Airflow/Docker
+    2. Commande git locale, utile quand le script est lancé depuis le PC
+    3. 'unknown' si Git n'est pas disponible
+    """
+    env_commit = os.getenv("GIT_COMMIT_HASH")
+
+    if env_commit and env_commit != "unknown":
+        return env_commit
+
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            text=True
+        ).strip()
+    except Exception:
+        return "unknown"
 
 def build_pipeline() -> Pipeline:
     return Pipeline(
@@ -114,11 +143,11 @@ def set_model_as_best(client: MlflowClient, model_name: str, version: str):
     )
 
 
-def log_confusion_matrix_to_mlflow(cm):
+def log_confusion_matrix_to_mlflow(cm, report: str):
     """
-    Logge la matrice de confusion dans MLflow :
-    - les 4 valeurs comme métriques scalaires ;
-    - une image PNG comme artifact.
+    Logge la matrice de confusion dans MLflow sous forme de métriques scalaires.
+    Le logging des artifacts est désactivé temporairement pour éviter les problèmes
+    de permissions entre Airflow et le serveur MLflow Docker.
     """
     tn, fp, fn, tp = cm.ravel()
 
@@ -127,22 +156,13 @@ def log_confusion_matrix_to_mlflow(cm):
     mlflow.log_metric("confusion_false_negative", int(fn))
     mlflow.log_metric("confusion_true_positive", int(tp))
 
-    disp = ConfusionMatrixDisplay(
-        confusion_matrix=cm,
-        display_labels=["negative", "positive"],
-    )
-
-    disp.plot(values_format="d")
-    plt.title("Confusion Matrix - Trustpilot Sentiment Model")
-    plt.tight_layout()
-
-    mlflow.log_figure(plt.gcf(), "confusion_matrix.png")
-    plt.close()
+    print("Matrice de confusion loggée dans MLflow sous forme de métriques scalaires.")
 
 
 def train():
     Path("models").mkdir(exist_ok=True)
 
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment(EXPERIMENT_NAME)
     client = MlflowClient()
 
@@ -151,6 +171,7 @@ def train():
 
     dataset_hash = compute_dataset_hash(df)
     target_distribution = df["target"].value_counts().to_dict()
+    git_commit_hash = get_git_commit_hash()
 
     X = df["CleanText"]
     y = df["target"]
@@ -217,6 +238,7 @@ def train():
         mlflow.log_param("dataset_size", len(df))
         mlflow.log_param("negative_class_count", int(target_distribution.get(0, 0)))
         mlflow.log_param("positive_class_count", int(target_distribution.get(1, 0)))
+        mlflow.log_param("git_commit_hash", git_commit_hash)
 
         # Métriques principales
         mlflow.log_metric("accuracy", accuracy)
@@ -225,7 +247,7 @@ def train():
         mlflow.log_metric("recall_macro", recall_macro)
 
         # Matrice de confusion
-        log_confusion_matrix_to_mlflow(cm)
+        log_confusion_matrix_to_mlflow(cm, report)
 
         # Enregistrement du modèle dans MLflow Registry
         mlflow.sklearn.log_model(
@@ -291,6 +313,7 @@ def train():
         print(f"Run ID : {run.info.run_id}")
         print(f"Dataset hash : {dataset_hash}")
         print(f"Dataset size : {len(df)}")
+        print(f"Git commit hash : {git_commit_hash}")
         print(f"Accuracy : {accuracy:.4f}")
         print(f"F1 macro : {f1_macro:.4f}")
         print(f"Precision macro : {precision_macro:.4f}")

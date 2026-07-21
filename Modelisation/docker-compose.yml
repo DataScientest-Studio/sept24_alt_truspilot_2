@@ -1,0 +1,48 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: trustpilot-api
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+    command: python -m uvicorn api:app --host 0.0.0.0 --port 8000
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: trustpilot-mlflow
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./mlruns:/app/mlruns
+      - ./mlflow_db:/app/mlflow_db
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:////app/mlflow_db/mlflow.db
+      --serve-artifacts
+      --artifacts-destination /app/mlruns
+      --allowed-hosts "*"
+      --host 0.0.0.0
+      --port 5000
+  airflow:
+    image: apache/airflow:2.10.5-python3.11
+    container_name: trustpilot-airflow
+    depends_on:
+      - mlflow
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - .:/opt/airflow/project
+      - ./mlruns:/app/mlruns
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      MLFLOW_TRACKING_URI: "http://mlflow:5000"
+      GIT_COMMIT_HASH: ${GIT_COMMIT_HASH:-unknown}
+      _PIP_ADDITIONAL_REQUIREMENTS: "pandas scikit-learn==1.7.2 joblib mlflow matplotlib"
+    command: standalone

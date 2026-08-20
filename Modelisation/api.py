@@ -7,6 +7,8 @@ import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Header, Depends
 from pydantic import BaseModel, Field
+from prometheus_client import Counter, Gauge, Histogram
+from prometheus_fastapi_instrumentator import Instrumentator
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
@@ -25,7 +27,56 @@ app = FastAPI(
     version="1.0.0",
 )
 
+Instrumentator().instrument(app).expose(
+    app,
+    endpoint="/metrics",
+    include_in_schema=False
+)
+
 model = None
+
+# Référence issue du dataset d'entraînement :
+# 3652 avis positifs sur 5619 lignes utilisées.
+REFERENCE_POSITIVE_RATIO = 3652 / 5619
+
+total_predictions = 0
+positive_predictions = 0
+
+
+prediction_counter = Counter(
+    "trustpilot_predictions_total",
+    "Nombre total de prédictions réalisées par l'API",
+    ["label"]
+)
+
+prediction_positive_probability = Histogram(
+    "trustpilot_prediction_positive_probability",
+    "Distribution des probabilités positives retournées par le modèle",
+    buckets=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+)
+
+input_text_length = Histogram(
+    "trustpilot_input_text_length",
+    "Longueur des textes envoyés à l'API de prédiction",
+    buckets=[0, 50, 100, 200, 500, 1000, 2000, 5000]
+)
+
+current_positive_ratio_gauge = Gauge(
+    "trustpilot_current_positive_ratio",
+    "Ratio courant de prédictions positives depuis le démarrage de l'API"
+)
+
+reference_positive_ratio_gauge = Gauge(
+    "trustpilot_reference_positive_ratio",
+    "Ratio de référence des avis positifs dans le dataset d'entraînement"
+)
+
+drift_proxy_gauge = Gauge(
+    "trustpilot_prediction_drift_proxy",
+    "Indicateur simple de drift basé sur l'écart entre le ratio positif courant et le ratio positif de référence"
+)
+
+reference_positive_ratio_gauge.set(REFERENCE_POSITIVE_RATIO)
 
 
 def verify_api_key(x_api_key: str | None = Header(default=None, alias="X-API-Key")):
@@ -150,7 +201,26 @@ def predict(request: PredictRequest):
             probabilities = loaded_model.predict_proba([request.text])[0]
             probability_negative = float(probabilities[0])
             probability_positive = float(probabilities[1])
+        
+        global total_predictions, positive_predictions
 
+        prediction_counter.labels(label=label).inc()
+        input_text_length.observe(len(request.text))
+
+        if probability_positive is not None:
+            prediction_positive_probability.observe(probability_positive)
+
+        total_predictions += 1
+
+        if prediction == 1:
+            positive_predictions += 1
+
+        current_positive_ratio = positive_predictions / total_predictions
+        current_positive_ratio_gauge.set(current_positive_ratio)
+
+        drift_proxy = abs(current_positive_ratio - REFERENCE_POSITIVE_RATIO)
+        drift_proxy_gauge.set(drift_proxy)
+        
         return {
             "text": request.text,
             "prediction": prediction,

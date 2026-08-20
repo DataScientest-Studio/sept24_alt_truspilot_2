@@ -1,4 +1,4 @@
-fastapi
+fastapi==0.121.2
 uvicorn
 pandas
 scikit-learn==1.7.2
@@ -7,3 +7,6 @@ mlflow
 pytest
 httpx
 matplotlib
+prometheus-client
+prometheus-fastapi-instrumentator
+starlette==0.49.3

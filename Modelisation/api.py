@@ -1,10 +1,11 @@
 from pathlib import Path
+import os
 import sqlite3
 from typing import Optional
 
 import joblib
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from pydantic import BaseModel, Field
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
@@ -15,6 +16,9 @@ DB_PATH = "data/trustpilot.db"
 TABLE_NAME = "reviews"
 MODEL_PATH = "models/trustpilot_logistic_tfidf.joblib"
 
+API_KEY = os.getenv("API_KEY", "dev-secret-key")
+
+
 app = FastAPI(
     title="Trustpilot Sentiment API",
     description="API de prédiction de sentiment à partir d'avis clients Trustpilot.",
@@ -22,6 +26,15 @@ app = FastAPI(
 )
 
 model = None
+
+
+def verify_api_key(x_api_key: str | None = Header(default=None, alias="X-API-Key")):
+    """
+    Vérifie la clé API envoyée dans le header X-API-Key.
+    Les routes sensibles comme /predict et /training sont protégées.
+    """
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
 
 
 class PredictRequest(BaseModel):
@@ -118,7 +131,11 @@ def model_info():
     }
 
 
-@app.post("/predict", response_model=PredictResponse)
+@app.post(
+    "/predict",
+    response_model=PredictResponse,
+    dependencies=[Depends(verify_api_key)]
+)
 def predict(request: PredictRequest):
     try:
         loaded_model = load_model()
@@ -152,7 +169,10 @@ def predict(request: PredictRequest):
         )
 
 
-@app.post("/training")
+@app.post(
+    "/training",
+    dependencies=[Depends(verify_api_key)]
+)
 def training():
     """
     Route d'entraînement simple.

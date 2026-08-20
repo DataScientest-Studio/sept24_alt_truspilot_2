@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+import api
 from api import app, API_KEY
 
 
@@ -8,6 +9,14 @@ client = TestClient(app)
 AUTH_HEADERS = {
     "X-API-Key": API_KEY
 }
+
+
+class FakeModel:
+    def predict(self, texts):
+        return [1]
+
+    def predict_proba(self, texts):
+        return [[0.10, 0.90]]
 
 
 def test_root_returns_200():
@@ -38,7 +47,9 @@ def test_model_info_returns_200():
     assert "labels" in data
 
 
-def test_predict_returns_prediction():
+def test_predict_returns_prediction(monkeypatch):
+    monkeypatch.setattr(api, "load_model", lambda: FakeModel())
+
     response = client.post(
         "/predict",
         headers=AUTH_HEADERS,
@@ -48,13 +59,11 @@ def test_predict_returns_prediction():
     assert response.status_code == 200
     data = response.json()
 
-    assert "text" in data
-    assert "prediction" in data
-    assert "label" in data
-    assert "probability_negative" in data
-    assert "probability_positive" in data
-    assert data["prediction"] in [0, 1]
-    assert data["label"] in ["positive", "negative"]
+    assert data["text"] == "This product is amazing and I love it"
+    assert data["prediction"] == 1
+    assert data["label"] == "positive"
+    assert data["probability_negative"] == 0.10
+    assert data["probability_positive"] == 0.90
 
 
 def test_predict_without_api_key_returns_401():

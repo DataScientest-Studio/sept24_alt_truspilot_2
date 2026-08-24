@@ -4,14 +4,20 @@ services:
       context: .
       dockerfile: Dockerfile.api
     container_name: trustpilot-api
+    depends_on:
+      - mlflow
     ports:
       - "8001:8000"
     volumes:
       - ./models:/app/models
       - ./data:/app/data
-    command: python -m uvicorn api:app --host 0.0.0.0 --port 8000
+      - ./mlruns:/app/mlruns
     environment:
-       API_KEY: "trustpilot-secret-key"
+      API_KEY: ${API_KEY:-trustpilot-secret-key}
+      MLFLOW_TRACKING_URI: "http://mlflow:5000"
+      REGISTERED_MODEL_NAME: "trustpilot_sentiment_model"
+      MODEL_ALIAS: "best"
+    command: python -m uvicorn api:app --host 0.0.0.0 --port 8000
 
   mlflow:
     build:
@@ -31,6 +37,7 @@ services:
       --allowed-hosts "*"
       --host 0.0.0.0
       --port 5000
+
   airflow:
     image: apache/airflow:2.10.5-python3.11
     container_name: trustpilot-airflow
@@ -39,6 +46,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
+      - airflow_data:/opt/airflow
       - ./dags:/opt/airflow/dags
       - .:/opt/airflow/project
       - ./mlruns:/app/mlruns
@@ -48,7 +56,7 @@ services:
       GIT_COMMIT_HASH: ${GIT_COMMIT_HASH:-unknown}
       _PIP_ADDITIONAL_REQUIREMENTS: "pandas scikit-learn==1.7.2 joblib mlflow matplotlib"
     command: standalone
-  
+
   prometheus:
     image: prom/prometheus:latest
     container_name: trustpilot-prometheus
@@ -58,8 +66,10 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
 
   grafana:
     image: grafana/grafana:latest
@@ -68,6 +78,17 @@ services:
       - prometheus
     ports:
       - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
 
   streamlit:
     build:
@@ -82,10 +103,15 @@ services:
       - "8501:8501"
     environment:
       STREAMLIT_API_URL: "http://api:8000"
-      STREAMLIT_API_KEY: "trustpilot-secret-key"
+      STREAMLIT_API_KEY: ${API_KEY:-trustpilot-secret-key}
       STREAMLIT_PROMETHEUS_URL: "http://prometheus:9090"
       STREAMLIT_PROMETHEUS_PUBLIC_URL: "http://127.0.0.1:9090"
       STREAMLIT_GRAFANA_URL: "http://127.0.0.1:3000"
       STREAMLIT_MLFLOW_URL: "http://127.0.0.1:5001"
       STREAMLIT_AIRFLOW_URL: "http://127.0.0.1:8080"
       STREAMLIT_SWAGGER_URL: "http://127.0.0.1:8001/docs"
+
+volumes:
+  grafana_data:
+  prometheus_data:
+  airflow_data:

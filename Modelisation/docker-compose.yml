@@ -68,3 +68,24 @@ services:
       - prometheus
     ports:
       - "3000:3000"
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: trustpilot-streamlit
+    depends_on:
+      - api
+      - prometheus
+      - grafana
+    ports:
+      - "8501:8501"
+    environment:
+      STREAMLIT_API_URL: "http://api:8000"
+      STREAMLIT_API_KEY: "trustpilot-secret-key"
+      STREAMLIT_PROMETHEUS_URL: "http://prometheus:9090"
+      STREAMLIT_PROMETHEUS_PUBLIC_URL: "http://127.0.0.1:9090"
+      STREAMLIT_GRAFANA_URL: "http://127.0.0.1:3000"
+      STREAMLIT_MLFLOW_URL: "http://127.0.0.1:5001"
+      STREAMLIT_AIRFLOW_URL: "http://127.0.0.1:8080"
+      STREAMLIT_SWAGGER_URL: "http://127.0.0.1:8001/docs"

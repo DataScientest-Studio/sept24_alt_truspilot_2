@@ -1,4 +1,5 @@
 from typing import Optional, Dict, Any
+import os
 import random
 import time
 
@@ -11,17 +12,27 @@ import streamlit as st
 # ==================================================
 
 st.set_page_config(
-    page_title="Trustpilot Sentiment – Interface MLOps",
-    page_icon="🧭",
+    page_title="Trustpilot Sentiment - Interface MLOps",
+    page_icon="T",
     layout="wide"
 )
 
-DEFAULT_API_URL = "http://127.0.0.1:8001"
-DEFAULT_API_KEY = "trustpilot-secret-key"
-DEFAULT_GRAFANA_URL = "http://127.0.0.1:3000"
-DEFAULT_PROMETHEUS_URL = "http://127.0.0.1:9090"
-DEFAULT_MLFLOW_URL = "http://127.0.0.1:5001"
-DEFAULT_AIRFLOW_URL = "http://127.0.0.1:8080"
+# URLs utilisees par Streamlit pour appeler les services
+# En local : 127.0.0.1
+# Dans Docker Compose : api, prometheus, etc.
+DEFAULT_API_URL = os.getenv("STREAMLIT_API_URL", "http://127.0.0.1:8001")
+DEFAULT_API_KEY = os.getenv("STREAMLIT_API_KEY", "trustpilot-secret-key")
+DEFAULT_PROMETHEUS_URL = os.getenv("STREAMLIT_PROMETHEUS_URL", "http://127.0.0.1:9090")
+
+# URLs publiques ouvertes par le navigateur
+DEFAULT_GRAFANA_URL = os.getenv("STREAMLIT_GRAFANA_URL", "http://127.0.0.1:3000")
+DEFAULT_MLFLOW_URL = os.getenv("STREAMLIT_MLFLOW_URL", "http://127.0.0.1:5001")
+DEFAULT_AIRFLOW_URL = os.getenv("STREAMLIT_AIRFLOW_URL", "http://127.0.0.1:8080")
+DEFAULT_SWAGGER_URL = os.getenv("STREAMLIT_SWAGGER_URL", "http://127.0.0.1:8001/docs")
+DEFAULT_PROMETHEUS_PUBLIC_URL = os.getenv(
+    "STREAMLIT_PROMETHEUS_PUBLIC_URL",
+    "http://127.0.0.1:9090"
+)
 
 
 # ==================================================
@@ -30,7 +41,7 @@ DEFAULT_AIRFLOW_URL = "http://127.0.0.1:8080"
 
 def call_api_predict(api_url: str, api_key: str, text: str) -> Dict[str, Any]:
     """
-    Appelle l'endpoint sécurisé /predict de l'API FastAPI.
+    Appelle l'endpoint securise /predict de l'API FastAPI.
     """
     endpoint = f"{api_url.rstrip('/')}/predict"
 
@@ -65,8 +76,8 @@ def call_api_health(api_url: str) -> Optional[Dict[str, Any]]:
 
 def query_prometheus(prometheus_url: str, query: str) -> Optional[float]:
     """
-    Exécute une requête Prometheus instantanée.
-    Retourne la première valeur numérique trouvée.
+    Execute une requete Prometheus instantanee.
+    Retourne la premiere valeur numerique trouvee.
     """
     try:
         endpoint = f"{prometheus_url.rstrip('/')}/api/v1/query"
@@ -108,8 +119,8 @@ def safe_percent(value: Optional[float]) -> str:
 
 def probability_bar(label: str, value: Optional[float], color: str) -> None:
     """
-    Affiche une barre de probabilité en HTML simple.
-    On évite st.progress pour éviter les erreurs JS Streamlit.
+    Affiche une barre de probabilite en HTML simple.
+    On evite st.progress pour eviter les erreurs JS Streamlit.
     """
     if value is None:
         st.write(f"{label} : N/A")
@@ -147,11 +158,11 @@ def generate_demo_predictions(
     api_url: str,
     api_key: str,
     count: int = 50,
-    mode: str = "balanced"
+    mode: str = "Equilibre"
 ) -> Dict[str, int]:
     """
-    Génère des appels de démonstration vers l'API /predict
-    afin d'alimenter les métriques Prometheus/Grafana.
+    Genere des appels de demonstration vers l'API /predict
+    afin d'alimenter les metriques Prometheus/Grafana.
     """
 
     positive_texts = [
@@ -185,7 +196,7 @@ def generate_demo_predictions(
 
     if mode == "Majoritairement positif":
         demo_texts = positive_texts * 4 + negative_texts + mixed_texts
-    elif mode == "Majoritairement négatif":
+    elif mode == "Majoritairement negatif":
         demo_texts = negative_texts * 4 + positive_texts + mixed_texts
     else:
         demo_texts = positive_texts + negative_texts + mixed_texts
@@ -223,37 +234,49 @@ def generate_demo_predictions(
 # SIDEBAR
 # ==================================================
 
-st.sidebar.title("⚙️ Configuration locale")
+st.sidebar.title("Configuration locale")
 
 api_url = st.sidebar.text_input(
-    "URL API FastAPI",
+    "URL API utilisee par Streamlit",
     value=DEFAULT_API_URL
 )
 
 api_key = st.sidebar.text_input(
-    "Clé API utilisée pour appeler /predict",
+    "Cle API utilisee pour appeler /predict",
     value=DEFAULT_API_KEY,
     type="password"
 )
 
-grafana_url = st.sidebar.text_input(
-    "URL Grafana",
-    value=DEFAULT_GRAFANA_URL
-)
-
 prometheus_url = st.sidebar.text_input(
-    "URL Prometheus",
+    "URL Prometheus utilisee par Streamlit",
     value=DEFAULT_PROMETHEUS_URL
 )
 
+st.sidebar.divider()
+
+grafana_url = st.sidebar.text_input(
+    "URL publique Grafana",
+    value=DEFAULT_GRAFANA_URL
+)
+
+prometheus_public_url = st.sidebar.text_input(
+    "URL publique Prometheus",
+    value=DEFAULT_PROMETHEUS_PUBLIC_URL
+)
+
 mlflow_url = st.sidebar.text_input(
-    "URL MLflow",
+    "URL publique MLflow",
     value=DEFAULT_MLFLOW_URL
 )
 
 airflow_url = st.sidebar.text_input(
-    "URL Airflow",
+    "URL publique Airflow",
     value=DEFAULT_AIRFLOW_URL
+)
+
+swagger_url = st.sidebar.text_input(
+    "URL publique Swagger API",
+    value=DEFAULT_SWAGGER_URL
 )
 
 st.sidebar.divider()
@@ -263,6 +286,7 @@ st.sidebar.markdown(
     **Services attendus :**
 
     - FastAPI : `8001`
+    - Streamlit : `8501`
     - MLflow : `5001`
     - Airflow : `8080`
     - Prometheus : `9090`
@@ -275,15 +299,15 @@ st.sidebar.markdown(
 # HEADER
 # ==================================================
 
-st.title("🧭 Trustpilot Sentiment – Interface utilisateur MLOps")
+st.title("Trustpilot Sentiment - Interface utilisateur MLOps")
 
 st.markdown(
     """
-    Cette interface permet à un utilisateur métier de tester le modèle de sentiment
+    Cette interface permet a un utilisateur metier de tester le modele de sentiment
     sans manipuler directement le code Python.
 
-    L’application appelle une **API FastAPI sécurisée**, affiche le résultat de prédiction
-    et donne accès au monitoring en direct via **Prometheus** et **Grafana**.
+    L'application appelle une **API FastAPI securisee**, affiche le resultat de prediction
+    et donne acces au monitoring en direct via **Prometheus** et **Grafana**.
     """
 )
 
@@ -293,11 +317,11 @@ st.markdown(
 # ==================================================
 
 tab_home, tab_predict, tab_monitoring, tab_pipeline, tab_docs = st.tabs([
-    "🏠 Accueil",
-    "🔮 Prédiction",
-    "📈 Monitoring live",
-    "🧱 Pipeline MLOps",
-    "📚 Documentation & limites"
+    "Accueil",
+    "Prediction",
+    "Monitoring live",
+    "Pipeline MLOps",
+    "Documentation et limites"
 ])
 
 
@@ -306,69 +330,69 @@ tab_home, tab_predict, tab_monitoring, tab_pipeline, tab_docs = st.tabs([
 # ==================================================
 
 with tab_home:
-    st.header("🎯 Objectif de l’application")
+    st.header("Objectif de l'application")
 
     col1, col2 = st.columns([2, 1])
 
     with col1:
         st.markdown(
             """
-            Le projet vise à classifier automatiquement des avis clients Trustpilot
-            en deux catégories :
+            Le projet vise a classifier automatiquement des avis clients Trustpilot
+            en deux categories :
 
             - **Avis positif**
-            - **Avis négatif / insatisfait**
+            - **Avis negatif / insatisfait**
 
-            L’objectif n’est pas seulement d’avoir un modèle performant, mais de montrer
-            comment ce modèle peut être **mis à disposition**, **sécurisé**, **monitoré**
+            L'objectif n'est pas seulement d'avoir un modele performant, mais de montrer
+            comment ce modele peut etre **mis a disposition**, **securise**, **monitore**
             et **maintenu** dans une logique MLOps.
             """
         )
 
         st.info(
-            "Cas d’usage métier : aider une équipe support, marketing ou réputation client "
-            "à repérer rapidement les avis négatifs et suivre l’évolution du sentiment client."
+            "Cas d'usage metier : aider une equipe support, marketing ou reputation client "
+            "a reperer rapidement les avis negatifs et suivre l'evolution du sentiment client."
         )
 
     with col2:
-        st.metric("Type de modèle", "NLP")
-        st.metric("Sortie", "Positif / Négatif")
+        st.metric("Type de modele", "NLP")
+        st.metric("Sortie", "Positif / Negatif")
         st.metric("Interface", "Streamlit + API")
 
     st.divider()
 
-    st.subheader("🧩 Composants utilisés")
+    st.subheader("Composants utilises")
 
     c1, c2, c3, c4 = st.columns(4)
 
     with c1:
-        st.markdown("### 🚀 FastAPI")
-        st.write("Expose le modèle via une API sécurisée.")
+        st.markdown("### FastAPI")
+        st.write("Expose le modele via une API securisee.")
 
     with c2:
-        st.markdown("### 📊 MLflow")
-        st.write("Suit les entraînements et versionne les modèles.")
+        st.markdown("### MLflow")
+        st.write("Suit les entrainements et versionne les modeles.")
 
     with c3:
-        st.markdown("### 🕒 Airflow")
-        st.write("Orchestre le pipeline d’entraînement.")
+        st.markdown("### Airflow")
+        st.write("Orchestre le pipeline d'entrainement.")
 
     with c4:
-        st.markdown("### 📈 Grafana")
+        st.markdown("### Grafana")
         st.write("Affiche le monitoring et le drift proxy.")
 
 
 # ==================================================
-# ONGLET PRÉDICTION
+# ONGLET PREDICTION
 # ==================================================
 
 with tab_predict:
-    st.header("🔮 Prédire le sentiment d’un avis client")
+    st.header("Predire le sentiment d'un avis client")
 
     st.markdown(
         """
-        L’utilisateur saisit un avis client.  
-        L’application Streamlit envoie ensuite la requête à l’API FastAPI sécurisée.
+        L'utilisateur saisit un avis client.
+        L'application Streamlit envoie ensuite la requete a l'API FastAPI securisee.
         """
     )
 
@@ -376,9 +400,9 @@ with tab_predict:
         "Exemples rapides",
         [
             "Avis positif",
-            "Avis négatif",
-            "Avis mitigé",
-            "Texte personnalisé"
+            "Avis negatif",
+            "Avis mitige",
+            "Texte personnalise"
         ]
     )
 
@@ -386,40 +410,40 @@ with tab_predict:
         "Avis positif": (
             "This product is amazing. Delivery was fast and customer support was very helpful."
         ),
-        "Avis négatif": (
+        "Avis negatif": (
             "This is terrible. The product arrived broken and customer service never answered."
         ),
-        "Avis mitigé": (
+        "Avis mitige": (
             "The product is okay, but delivery was late and the support experience could be better."
         ),
-        "Texte personnalisé": ""
+        "Texte personnalise": ""
     }
 
     default_text = examples[example_choice]
 
     user_text = st.text_area(
-        "✍️ Avis client",
+        "Avis client",
         value=default_text,
         height=160,
-        placeholder="Entrez ici un avis client à analyser..."
+        placeholder="Entrez ici un avis client a analyser..."
     )
 
     col_btn, col_info = st.columns([1, 2])
 
     with col_btn:
-        predict_clicked = st.button("✨ Prédire le sentiment", type="primary")
+        predict_clicked = st.button("Predire le sentiment", type="primary")
 
     with col_info:
         st.caption(
-            "La prédiction est réalisée via `POST /predict` avec le header sécurisé `X-API-Key`."
+            "La prediction est realisee via POST /predict avec le header securise X-API-Key."
         )
 
     if predict_clicked:
         if not user_text.strip():
-            st.warning("Veuillez saisir un avis client avant de lancer la prédiction.")
+            st.warning("Veuillez saisir un avis client avant de lancer la prediction.")
         else:
             try:
-                with st.spinner("Appel de l’API de prédiction..."):
+                with st.spinner("Appel de l'API de prediction..."):
                     result = call_api_predict(api_url, api_key, user_text)
 
                 label = result.get("label")
@@ -433,75 +457,75 @@ with tab_predict:
 
                 with left:
                     if label == "positive":
-                        st.success("✅ Avis prédit POSITIF")
+                        st.success("Avis predit POSITIF")
                     else:
-                        st.error("❌ Avis prédit NÉGATIF")
+                        st.error("Avis predit NEGATIF")
 
-                    st.metric("Classe prédite", str(prediction))
+                    st.metric("Classe predite", str(prediction))
                     st.metric("Label", str(label))
 
                 with right:
-                    st.subheader("📊 Probabilités du modèle")
+                    st.subheader("Probabilites du modele")
 
                     metric_col1, metric_col2 = st.columns(2)
 
                     with metric_col1:
                         if probability_positive is not None:
                             st.metric(
-                                "Probabilité positive",
+                                "Probabilite positive",
                                 f"{probability_positive * 100:.1f} %"
                             )
                         else:
-                            st.metric("Probabilité positive", "N/A")
+                            st.metric("Probabilite positive", "N/A")
 
                     with metric_col2:
                         if probability_negative is not None:
                             st.metric(
-                                "Probabilité négative",
+                                "Probabilite negative",
                                 f"{probability_negative * 100:.1f} %"
                             )
                         else:
-                            st.metric("Probabilité négative", "N/A")
+                            st.metric("Probabilite negative", "N/A")
 
                     probability_bar(
-                        "Probabilité positive",
+                        "Probabilite positive",
                         probability_positive,
                         "#2ecc71"
                     )
 
                     probability_bar(
-                        "Probabilité négative",
+                        "Probabilite negative",
                         probability_negative,
                         "#e74c3c"
                     )
 
                     if label == "positive":
                         st.info(
-                            "Interprétation métier : le modèle estime que cet avis exprime "
-                            "plutôt une satisfaction client."
+                            "Interpretation metier : le modele estime que cet avis exprime "
+                            "plutot une satisfaction client."
                         )
                     else:
                         st.warning(
-                            "Interprétation métier : le modèle estime que cet avis exprime "
-                            "plutôt une insatisfaction ou un signal à traiter."
+                            "Interpretation metier : le modele estime que cet avis exprime "
+                            "plutot une insatisfaction ou un signal a traiter."
                         )
 
-                with st.expander("Voir la réponse JSON de l’API"):
+                with st.expander("Voir la reponse JSON de l'API"):
                     st.json(result)
 
             except requests.exceptions.HTTPError as e:
                 if e.response is not None and e.response.status_code == 401:
                     st.error(
-                        "Erreur 401 : clé API invalide ou absente. "
-                        "Vérifiez la valeur du header X-API-Key dans la barre latérale."
+                        "Erreur 401 : cle API invalide ou absente. "
+                        "Verifiez la valeur du header X-API-Key dans la barre laterale."
                     )
                 else:
-                    st.error(f"Erreur HTTP lors de l’appel API : {e}")
+                    st.error(f"Erreur HTTP lors de l'appel API : {e}")
 
             except requests.exceptions.ConnectionError:
                 st.error(
-                    "Impossible de joindre l’API FastAPI. "
-                    "Vérifiez que Docker Compose est lancé et que l’API est disponible sur le port 8001."
+                    "Impossible de joindre l'API FastAPI. "
+                    "Verifiez que Docker Compose est lance et que l'API est disponible."
                 )
 
             except Exception as e:
@@ -513,12 +537,13 @@ with tab_predict:
 # ==================================================
 
 with tab_monitoring:
-    st.header("📈 Monitoring live de l’API")
+    st.header("Monitoring live de l'API")
 
     st.markdown(
         """
-        Cette section donne une vue simple de l’état de l’API et des métriques exposées
-        à Prometheus.  
+        Cette section donne une vue simple de l'etat de l'API et des metriques exposees
+        a Prometheus.
+
         Le dashboard complet est disponible dans Grafana.
         """
     )
@@ -548,23 +573,23 @@ with tab_monitoring:
 
     with col1:
         if api_is_ok:
-            st.success("✅ API FastAPI joignable")
+            st.success("API FastAPI joignable")
         else:
-            st.error("❌ API FastAPI indisponible")
+            st.error("API FastAPI indisponible")
 
     with col2:
         if api_up == 1:
-            st.success("✅ Prometheus target UP")
+            st.success("Prometheus target UP")
         elif api_up == 0:
-            st.error("❌ Prometheus target DOWN")
+            st.error("Prometheus target DOWN")
         else:
-            st.warning("⚠️ Statut Prometheus indisponible")
+            st.warning("Statut Prometheus indisponible")
 
     with col3:
         if health:
-            st.success("✅ /health OK")
+            st.success("/health OK")
         else:
-            st.error("❌ /health indisponible")
+            st.error("/health indisponible")
 
     st.divider()
 
@@ -572,7 +597,7 @@ with tab_monitoring:
 
     with m1:
         st.metric(
-            "Total prédictions",
+            "Total predictions",
             "N/A" if total_predictions is None else int(total_predictions)
         )
 
@@ -584,7 +609,7 @@ with tab_monitoring:
 
     with m3:
         st.metric(
-            "Ratio positif référence",
+            "Ratio positif reference",
             safe_percent(reference_positive_ratio)
         )
 
@@ -595,19 +620,19 @@ with tab_monitoring:
         )
 
     st.info(
-        "Le drift proxy compare le ratio courant de prédictions positives "
-        "au ratio positif du dataset d’entraînement. C’est un premier signal simple "
+        "Le drift proxy compare le ratio courant de predictions positives "
+        "au ratio positif du dataset d'entrainement. C'est un premier signal simple "
         "de changement de distribution."
     )
 
     st.divider()
 
-    st.subheader("🚦 Générer du trafic de démonstration")
+    st.subheader("Generer du trafic de demonstration")
 
     st.markdown(
         """
-        Ce bouton envoie automatiquement plusieurs avis de test vers l’API `/predict`.
-        Cela permet d’alimenter les métriques Prometheus et de voir le dashboard Grafana évoluer.
+        Ce bouton envoie automatiquement plusieurs avis de test vers l'API `/predict`.
+        Cela permet d'alimenter les metriques Prometheus et de voir le dashboard Grafana evoluer.
         """
     )
 
@@ -615,7 +640,7 @@ with tab_monitoring:
 
     with traffic_col1:
         prediction_count = st.number_input(
-            "Nombre de prédictions à générer",
+            "Nombre de predictions a generer",
             min_value=1,
             max_value=500,
             value=100,
@@ -624,25 +649,25 @@ with tab_monitoring:
 
     with traffic_col2:
         traffic_mode = st.selectbox(
-            "Type de trafic simulé",
+            "Type de trafic simule",
             [
-                "Équilibré",
+                "Equilibre",
                 "Majoritairement positif",
-                "Majoritairement négatif"
+                "Majoritairement negatif"
             ]
         )
 
         st.caption(
-            "Utile pour la démo : les compteurs Prometheus repartent de zéro "
-            "si le conteneur API redémarre."
+            "Utile pour la demo : les compteurs Prometheus repartent de zero "
+            "si le conteneur API redemarre."
         )
 
-    if st.button("🚀 Générer des prédictions de démonstration"):
+    if st.button("Generer des predictions de demonstration"):
         status_placeholder = st.empty()
 
-        with st.spinner(f"Génération de {prediction_count} prédictions..."):
+        with st.spinner(f"Generation de {prediction_count} predictions..."):
             status_placeholder.info(
-                "Envoi des requêtes vers l’API. Cela peut prendre quelques secondes."
+                "Envoi des requetes vers l'API. Cela peut prendre quelques secondes."
             )
 
             demo_results = generate_demo_predictions(
@@ -654,29 +679,29 @@ with tab_monitoring:
 
         status_placeholder.empty()
 
-        st.success("Génération terminée.")
+        st.success("Generation terminee.")
 
         r1, r2, r3, r4 = st.columns(4)
 
         with r1:
-            st.metric("Total envoyé", demo_results["total"])
+            st.metric("Total envoye", demo_results["total"])
 
         with r2:
             st.metric("Positifs", demo_results["positive"])
 
         with r3:
-            st.metric("Négatifs", demo_results["negative"])
+            st.metric("Negatifs", demo_results["negative"])
 
         with r4:
             st.metric("Erreurs", demo_results["errors"])
 
         st.info(
-            "Rafraîchissez Grafana ou l’onglet Monitoring live pour voir les métriques mises à jour."
+            "Rafraichissez Grafana ou l'onglet Monitoring live pour voir les metriques mises a jour."
         )
 
     st.divider()
 
-    st.subheader("🔗 Outils de monitoring")
+    st.subheader("Outils de monitoring")
 
     c1, c2, c3 = st.columns(3)
 
@@ -684,10 +709,10 @@ with tab_monitoring:
         st.link_button("Ouvrir Grafana", grafana_url)
 
     with c2:
-        st.link_button("Ouvrir Prometheus", prometheus_url)
+        st.link_button("Ouvrir Prometheus", prometheus_public_url)
 
     with c3:
-        st.link_button("Ouvrir Swagger API", f"{api_url.rstrip('/')}/docs")
+        st.link_button("Ouvrir Swagger API", swagger_url)
 
     st.caption(
         "Dans Grafana, le dashboard principal est : Trustpilot API Monitoring."
@@ -699,16 +724,16 @@ with tab_monitoring:
 # ==================================================
 
 with tab_pipeline:
-    st.header("🧱 Vue simplifiée du pipeline MLOps")
+    st.header("Vue simplifiee du pipeline MLOps")
 
     st.markdown(
         """
-        Cette section explique la chaîne complète de manière lisible pour un profil métier
+        Cette section explique la chaine complete de maniere lisible pour un profil metier
         ou data analyst.
         """
     )
 
-    st.subheader("🔮 Chaîne de prédiction")
+    st.subheader("Chaine de prediction")
 
     st.code(
         """
@@ -716,13 +741,13 @@ Utilisateur
    ↓
 Interface Streamlit
    ↓
-API FastAPI sécurisée avec X-API-Key
+API FastAPI securisee avec X-API-Key
    ↓
-Modèle de sentiment Trustpilot
+Modele de sentiment Trustpilot
    ↓
-Résultat : positif / négatif + probabilités
+Resultat : positif / negatif + probabilites
    ↓
-Métriques exposées sur /metrics
+Metriques exposees sur /metrics
    ↓
 Prometheus collecte
    ↓
@@ -731,28 +756,28 @@ Grafana visualise
         language="text"
     )
 
-    st.subheader("🧪 Chaîne d’entraînement")
+    st.subheader("Chaine d'entrainement")
 
     st.code(
         """
 Base SQLite Trustpilot
    ↓
-Airflow déclenche training_mlflow.py
+Airflow declenche training_mlflow.py
    ↓
-Entraînement du modèle TF-IDF + Logistic Regression
+Entrainement du modele TF-IDF + Logistic Regression
    ↓
-MLflow Tracking : métriques, paramètres, dataset hash
+MLflow Tracking : metriques, parametres, dataset hash
    ↓
-MLflow Registry : versionnement du modèle
+MLflow Registry : versionnement du modele
    ↓
-Comparaison avec le modèle best
+Comparaison avec le modele best
         """,
         language="text"
     )
 
     st.info(
         "Airflow peut demander une authentification. "
-        "Pour la démo locale, vous pouvez utiliser le compte administrateur configuré dans le conteneur."
+        "Pour la demo locale, utilisez le compte administrateur configure dans le conteneur."
     )
 
     st.divider()
@@ -769,7 +794,7 @@ Comparaison avec le modèle best
         st.link_button("Grafana", grafana_url)
 
     with c4:
-        st.link_button("Prometheus", prometheus_url)
+        st.link_button("Prometheus", prometheus_public_url)
 
 
 # ==================================================
@@ -777,46 +802,46 @@ Comparaison avec le modèle best
 # ==================================================
 
 with tab_docs:
-    st.header("📚 Documentation, limites et perspectives")
+    st.header("Documentation, limites et perspectives")
 
-    st.subheader("✅ Ce que permet cette interface")
+    st.subheader("Ce que permet cette interface")
 
     st.markdown(
         """
-        - Tester une prédiction via une API sécurisée.
-        - Montrer le comportement du modèle à partir d’un avis client.
-        - Vérifier l’état de santé de l’API.
-        - Visualiser les métriques principales exposées à Prometheus.
-        - Générer du trafic de démonstration pour alimenter Grafana.
-        - Accéder rapidement à Grafana, MLflow, Airflow et Swagger.
+        - Tester une prediction via une API securisee.
+        - Montrer le comportement du modele a partir d'un avis client.
+        - Verifier l'etat de sante de l'API.
+        - Visualiser les metriques principales exposees a Prometheus.
+        - Generer du trafic de demonstration pour alimenter Grafana.
+        - Acceder rapidement a Grafana, MLflow, Airflow et Swagger.
         """
     )
 
-    st.subheader("⚠️ Limites assumées")
+    st.subheader("Limites assumees")
 
     st.markdown(
         """
-        - Le modèle est volontairement simple : TF-IDF + Logistic Regression.
-        - La sécurité repose sur une clé API simple, pas sur OAuth2.
-        - Le drift proxy n’est pas une détection complète du drift sur les features textuelles.
-        - Le dashboard est local et non déployé sur une infrastructure cloud.
-        - Les compteurs Prometheus exposés par l’API repartent de zéro si le conteneur API redémarre.
+        - Le modele est volontairement simple : TF-IDF + Logistic Regression.
+        - La securite repose sur une cle API simple, pas sur OAuth2.
+        - Le drift proxy n'est pas une detection complete du drift sur les features textuelles.
+        - Le dashboard est local et non deploye sur une infrastructure cloud.
+        - Les compteurs Prometheus exposes par l'API repartent de zero si le conteneur API redemarre.
         """
     )
 
-    st.subheader("🚀 Perspectives")
+    st.subheader("Perspectives")
 
     st.markdown(
         """
-        - Brancher l’API directement sur le modèle `best` du MLflow Registry.
-        - Ajouter Evidently pour une détection de drift plus complète.
-        - Enregistrer chaque prédiction en base de données.
+        - Brancher l'API directement sur le modele `best` du MLflow Registry.
+        - Ajouter Evidently pour une detection de drift plus complete.
+        - Enregistrer chaque prediction en base de donnees.
         - Ajouter des alertes Grafana.
-        - Déployer la stack sur une infrastructure cloud ou Kubernetes.
+        - Deployer la stack sur une infrastructure cloud ou Kubernetes.
         """
     )
 
     st.success(
-        "Cette interface sert de vitrine utilisateur pour présenter le projet MLOps "
-        "au jury de manière claire et non technique."
+        "Cette interface sert de vitrine utilisateur pour presenter le projet MLOps "
+        "au jury de maniere claire et non technique."
     )
